@@ -35,8 +35,8 @@ module Sprockets
       
       # Then initialize the manifest with the workers you just determined
       manifest = Sprockets::Manifest.new(env, target)
-      manifest.compile paths
-      
+      manifest.compile paths, :digest => @digest
+
       puts "Finished Asset Compile: " + Time.now.getutc.to_s
       
     end

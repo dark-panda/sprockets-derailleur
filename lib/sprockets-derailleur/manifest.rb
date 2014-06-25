@@ -2,10 +2,15 @@ require "sprockets"
 
 module Sprockets
   class Manifest
+    DEFAULT_SPROCKETS_DERAILLEUR_OPTIONS = {
+      :digest => true
+    }
+
     alias_method :compile_with_workers, :compile
     def compile(*args)
       worker_count = SprocketsDerailleur::worker_count
       paths_with_errors = {}
+      options = DEFAULT_SPROCKETS_DERAILLEUR_OPTIONS.merge(args.extract_options!)
 
       time = Benchmark.measure do
         paths = environment.each_logical_path(*args).to_a +
@@ -27,7 +32,7 @@ module Sprockets
 
         workers = []
         worker_count.times do
-          workers << worker(paths)
+          workers << worker(paths, options)
         end
 
         reads = workers.map{|worker| worker[:read]}
@@ -83,7 +88,7 @@ module Sprockets
       end
     end
 
-    def worker(paths)
+    def worker(paths, options)
       child_read, parent_write = IO.pipe
       parent_read, child_write = IO.pipe
 
@@ -108,7 +113,11 @@ module Sprockets
                 }
                 data['assets'][asset.logical_path] = asset.digest_path
 
-                target = File.join(dir, asset.digest_path)
+                target = if options[:digest]
+                  File.join(dir, asset.digest_path)
+                else
+                  File.join(dir, asset.logical_path)
+                end
 
                 if File.exist?(target)
                   logger.debug "Skipping #{target}, already exists"
